@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect
 import glob
 
 # --- Validate API Key ---
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = os.getenv("OPEN_AI_API")
 if not OPENAI_API_KEY:
     raise ValueError("❌ Missing OPENAI_API_KEY environment variable.")
 
