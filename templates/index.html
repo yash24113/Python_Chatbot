@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Chatbot</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
+    .chat-box { max-width: 800px; margin: auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .message { margin-bottom: 15px; padding: 10px; border-radius: 6px; }
+    .user { text-align: right; background: #e3f2fd; }
+    .assistant { text-align: left; background: #f1f8e9; color: #1a73e8; }
+    form { display: flex; margin-top: 20px; }
+    input[type="text"] { flex: 1; padding: 10px; font-size: 16px; }
+    button { padding: 10px 20px; font-size: 16px; }
+    /* Make lists and bold text look clean */
+    .assistant ul, .assistant ol { margin: 8px 0 8px 20px; padding: 0; }
+    .assistant li { margin-bottom: 6px; }
+    .assistant strong { color: #000; }
+  </style>
+</head>
+<body>
+  <div class="chat-box">
+    <h2>📄 Document Chatbot</h2>
+    <div id="chat">
+      {% for msg in messages %}
+        <div class="message {{ msg.role }}">
+          <strong>{{ 'You' if msg.role == 'user' else 'Assistant' }}:</strong>
+          <div>
+            {{ msg.content | safe }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <form action="/chat" method="POST">
+      <input type="text" name="message" placeholder="Type your question here..." required>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+</body>
+</html>
