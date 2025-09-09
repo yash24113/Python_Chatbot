@@ -181,7 +181,7 @@
             ${role === "user" 
               ? `<button class="action-btn" onclick="editMessage(this)">✏️ Edit</button>
                  <button class="action-btn" onclick="copyText(this)">📋 Copy</button>`
-              : `<button class="action-btn" onclick="copyText(this)">📋 Copy</button>`}
+              : ``}
           </div>
         </div>
       `;
@@ -237,6 +237,7 @@
 
         assistantBubble.textContent = data.reply || "⚠️ No response";
 
+        // Only add copy button for assistant after response
         if (assistantActionsDiv) {
           assistantActionsDiv.innerHTML = '<button class="action-btn" onclick="copyText(this)">📋 Copy</button>';
         }

@@ -1,20 +1,16 @@
 import os
 import glob
-from flask import Flask, render_template, request, jsonify
+import streamlit as st
 import google.generativeai as genai
 
-# --- Validate API Key ---
+# --- Configure Gemini ---
 GEMINI_API_KEY = "AIzaSyBvgW9daVuVsg6SqtSmDz25NIT044eeWHA"
 if not GEMINI_API_KEY:
-    raise ValueError("❌ Missing GEMINI_API_KEY environment variable.")
+    st.error("❌ Missing GEMINI_API_KEY environment variable.")
+    st.stop()
 
-# Configure Gemini client
 genai.configure(api_key=GEMINI_API_KEY)
-
-# Use Gemini model (fast + cheap, you can change to "gemini-1.5-pro" if needed)
 model = genai.GenerativeModel("gemini-1.5-flash")
-
-app = Flask(__name__)
 
 # ----------------------------
 # Document Loader
@@ -32,9 +28,8 @@ def read_docs(doc_dir="docs"):
                 content = file.read()
                 docs.append({"name": os.path.basename(f), "content": content})
         except Exception as e:
-            print(f"⚠️ Could not read {f}: {e}")
+            st.warning(f"⚠️ Could not read {f}: {e}")
 
-    print(f"📄 Loaded {len(docs)} documents.")
     return docs
 
 def build_context(docs):
@@ -44,48 +39,44 @@ docs = read_docs()
 doc_context = build_context(docs)
 
 # ----------------------------
-# Conversation Memory
+# Streamlit UI
 # ----------------------------
-ui_messages = []
+st.set_page_config(page_title="📄 Document Chatbot", layout="centered")
+st.title("📄 Document Chatbot (Gemini LLM)")
 
-@app.route("/", methods=["GET"])
-def index():
-    return render_template("index.html", messages=ui_messages)
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    user_message = request.form.get("message")
-    if not user_message:
-        return jsonify({"error": "No message received"}), 400
+# Show chat history
+for msg in st.session_state["messages"]:
+    if msg["role"] == "user":
+        st.chat_message("user").write(msg["content"])
+    else:
+        st.chat_message("assistant").write(msg["content"])
 
-    # Save user message
-    ui_messages.append({"role": "user", "content": user_message})
+# Input box
+if user_input := st.chat_input("Type your question here..."):
+    # Save user input
+    st.session_state["messages"].append({"role": "user", "content": user_input})
+    st.chat_message("user").write(user_input)
 
     try:
-        # Build conversation string for Gemini
+        # Build conversation string
         conversation = (
             "You are a helpful assistant. Use the provided document context to answer questions.\n\n"
-            f"Here is the context:\n{doc_context}\n\n"
-            "Conversation:\n"
+            f"Here is the context:\n{doc_context}\n\nConversation:\n"
         )
-        for msg in ui_messages:
+        for msg in st.session_state["messages"]:
             conversation += f"{msg['role'].capitalize()}: {msg['content']}\n"
 
-        # Send to Gemini
+        # Generate reply
         response = model.generate_content(conversation)
         assistant_reply = response.text if response else "⚠️ No reply from Gemini."
 
-        # Save reply
-        ui_messages.append({"role": "", "content": assistant_reply})
-
-        return jsonify({"reply": assistant_reply})
-
     except Exception as e:
-        print(f"❌ Gemini Error: {e}")
-        error_message = "⚠️ Error: Could not get response from Gemini."
-        ui_messages.append({"role": "assistant", "content": error_message})
-        return jsonify({"reply": error_message}), 500
+        st.error(f"❌ Gemini Error: {e}")
+        assistant_reply = "⚠️ Error: Could not get response from Gemini."
 
-
-if __name__ == "__main__":
-    app.run(debug=True, port=3000)
+    # Save & display assistant reply
+    st.session_state["messages"].append({"role": "assistant", "content": assistant_reply})
+    st.chat_message("assistant").write(assistant_reply)
