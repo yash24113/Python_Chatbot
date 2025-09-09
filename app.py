@@ -42,7 +42,7 @@ doc_context = build_context(docs)
 # Streamlit UI
 # ----------------------------
 st.set_page_config(page_title="📄 Document Chatbot", layout="centered")
-st.title("📄 Document Chatbot (Gemini LLM)")
+st.title("🤖 chat bot")
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
