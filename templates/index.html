@@ -3,40 +3,274 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document Chatbot</title>
+  <title>📄 Document Chatbot</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
-    .chat-box { max-width: 800px; margin: auto; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    .message { margin-bottom: 15px; padding: 10px; border-radius: 6px; }
-    .user { text-align: right; background: #e3f2fd; }
-    .assistant { text-align: left; background: #f1f8e9; color: #1a73e8; }
-    form { display: flex; margin-top: 20px; }
-    input[type="text"] { flex: 1; padding: 10px; font-size: 16px; }
-    button { padding: 10px 20px; font-size: 16px; }
-    /* Make lists and bold text look clean */
-    .assistant ul, .assistant ol { margin: 8px 0 8px 20px; padding: 0; }
-    .assistant li { margin-bottom: 6px; }
-    .assistant strong { color: #000; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .chat-box {
+      width: 90%;
+      max-width: 800px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 15px;
+      background: #1a73e8;
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: #fafafa;
+    }
+    .message {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      max-width: 90%;
+    }
+    .message.user { margin-left: auto; flex-direction: row-reverse; }
+    .message.assistant { margin-right: auto; }
+    .avatar {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin: 0 8px;
+      flex-shrink: 0;
+    }
+    .bubble {
+      background: #e3f2fd;
+      padding: 10px 14px;
+      border-radius: 8px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      position: relative;
+    }
+    .assistant .bubble {
+      background: #f1f8e9;
+      color: #1a73e8;
+    }
+    .actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 4px;
+      font-size: 12px;
+    }
+    .action-btn {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      padding: 2px 5px;
+    }
+    .chat-input {
+      display: flex;
+      padding: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .chat-input input[type="text"] {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
+    }
+    .chat-input button {
+      margin-left: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: none;
+      background: #1a73e8;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chat-input button.stop {
+      background: #e53935;
+    }
+    /* Spinner */
+    .spinner {
+      border: 2px solid #fff;
+      border-top: 2px solid transparent;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    /* Typing dots animation */
+    .typing {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .typing span {
+      width: 6px;
+      height: 6px;
+      background: #1a73e8;
+      border-radius: 50%;
+      display: inline-block;
+      animation: blink 1.4s infinite both;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.2; }
+      40% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
   <div class="chat-box">
-    <h2>📄 Document Chatbot</h2>
-    <div id="chat">
-      {% for msg in messages %}
-        <div class="message {{ msg.role }}">
-          <strong>{{ 'You' if msg.role == 'user' else 'Assistant' }}:</strong>
-          <div>
-            {{ msg.content | safe }}
-          </div>
-        </div>
-      {% endfor %}
+    <div class="chat-header">
+      📄 Document Chatbot (Gemini LLM)
     </div>
 
-    <form action="/chat" method="POST">
-      <input type="text" name="message" placeholder="Type your question here..." required>
-      <button type="submit">Send</button>
+    <div class="chat-messages" id="chat"></div>
+
+    <form class="chat-input" onsubmit="sendMessage(event)">
+      <input type="text" id="messageInput" name="message" placeholder="Type your question here..." required>
+      <button type="submit" id="sendBtn">Send</button>
     </form>
   </div>
+
+  <script>
+    const chatBox = document.getElementById("chat");
+    const sendBtn = document.getElementById("sendBtn");
+    let controller = null;
+    let assistantActionsDiv = null;
+
+    function appendMessage(role, content, streaming=false) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `message ${role}`;
+      msgDiv.innerHTML = `
+        <div class="avatar">${role === "user" ? "U" : "A"}</div>
+        <div>
+          <div class="bubble">${content}</div>
+          <div class="actions">
+            ${role === "user" 
+              ? `<button class="action-btn" onclick="editMessage(this)">✏️ Edit</button>
+                 <button class="action-btn" onclick="copyText(this)">📋 Copy</button>`
+              : `<button class="action-btn" onclick="copyText(this)">📋 Copy</button>`}
+          </div>
+        </div>
+      `;
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      const bubble = msgDiv.querySelector(".bubble");
+      assistantActionsDiv = msgDiv.querySelector(".actions");
+
+      if (role === "assistant" && streaming) {
+        const typing = document.createElement("div");
+        typing.className = "typing";
+        typing.innerHTML = "<span></span><span></span><span></span>";
+        bubble.appendChild(typing);
+      }
+
+      return bubble;
+    }
+
+    async function sendMessage(e) {
+      e.preventDefault();
+
+      if (controller) {
+        stopResponse();
+        return;
+      }
+
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMessage("user", text);
+      input.value = "";
+
+      const assistantBubble = appendMessage("assistant", "", true);
+
+      sendBtn.innerHTML = '<div class="spinner"></div> Stop';
+      sendBtn.classList.add("stop");
+
+      controller = new AbortController();
+
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          body: new URLSearchParams({ message: text }),
+          signal: controller.signal
+        });
+
+        const data = await res.json();
+
+        const typing = assistantBubble.querySelector(".typing");
+        if (typing) typing.remove();
+
+        assistantBubble.textContent = data.reply || "⚠️ No response";
+
+        if (assistantActionsDiv) {
+          assistantActionsDiv.innerHTML = '<button class="action-btn" onclick="copyText(this)">📋 Copy</button>';
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          assistantBubble.textContent = "⚠️ Error getting response";
+        }
+      } finally {
+        stopResponse();
+      }
+    }
+
+    function stopResponse() {
+      if (controller) {
+        controller.abort();
+        controller = null;
+      }
+      sendBtn.innerText = "Send";
+      sendBtn.classList.remove("stop");
+    }
+
+    function copyText(btn) {
+      const text = btn.closest(".message").querySelector(".bubble").innerText;
+      navigator.clipboard.writeText(text);
+      btn.innerText = "✅ Copied";
+      setTimeout(() => (btn.innerText = "📋 Copy"), 1500);
+    }
+
+    function editMessage(btn) {
+      const bubble = btn.closest(".message").querySelector(".bubble");
+      const input = document.getElementById("messageInput");
+      input.value = bubble.innerText;
+      input.focus();
+    }
+  </script>
 </body>
 </html>

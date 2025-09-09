@@ -1,4 +1,6 @@
-openai>=1.0.0
-flask
-streamlit
+# openai>=1.0.0
+# flask
+# streamlit
 
+flask
+google-generativeai

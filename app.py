@@ -1,20 +1,26 @@
 import os
-import openai
-from flask import Flask, render_template, request, redirect
 import glob
+from flask import Flask, render_template, request, jsonify
+import google.generativeai as genai
 
 # --- Validate API Key ---
-OPENAI_API_KEY = os.getenv("OPEN_AI_API")
-if not OPENAI_API_KEY:
-    raise ValueError("❌ Missing OPENAI_API_KEY environment variable.")
+GEMINI_API_KEY = "AIzaSyBvgW9daVuVsg6SqtSmDz25NIT044eeWHA"
+if not GEMINI_API_KEY:
+    raise ValueError("❌ Missing GEMINI_API_KEY environment variable.")
 
-openai.api_key = OPENAI_API_KEY
+# Configure Gemini client
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Use Gemini model (fast + cheap, you can change to "gemini-1.5-pro" if needed)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 app = Flask(__name__)
 
-# Read documents
+# ----------------------------
+# Document Loader
+# ----------------------------
 def read_docs(doc_dir="docs"):
-    allowed_exts = ("*.txt", "*.md", "*.pdf", "*.docx", "*.xlsx", "*.tsv")
+    allowed_exts = ("*.txt", "*.md", "*.tsv")
     files = []
     for ext in allowed_exts:
         files.extend(glob.glob(os.path.join(doc_dir, ext)))
@@ -31,15 +37,15 @@ def read_docs(doc_dir="docs"):
     print(f"📄 Loaded {len(docs)} documents.")
     return docs
 
-# Combine docs into a single context string
 def build_context(docs):
     return "\n\n".join([f"--- {d['name']} ---\n{d['content']}" for d in docs])
 
-# Load docs once on server start
 docs = read_docs()
 doc_context = build_context(docs)
 
-# Conversation history (UI messages only)
+# ----------------------------
+# Conversation Memory
+# ----------------------------
 ui_messages = []
 
 @app.route("/", methods=["GET"])
@@ -50,32 +56,36 @@ def index():
 def chat():
     user_message = request.form.get("message")
     if not user_message:
-        return redirect("/")
+        return jsonify({"error": "No message received"}), 400
 
-    # Save user message for UI
+    # Save user message
     ui_messages.append({"role": "user", "content": user_message})
 
     try:
-        # Construct conversation for GPT
-        conversation = [
-            {"role": "system", "content": "You are a helpful assistant. Use the provided document context to answer questions."},
-            {"role": "system", "content": f"Here is the context:\n\n{doc_context}"},
-        ] + ui_messages  # only user/assistant turns
-
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=conversation,
-            temperature=0.2
+        # Build conversation string for Gemini
+        conversation = (
+            "You are a helpful assistant. Use the provided document context to answer questions.\n\n"
+            f"Here is the context:\n{doc_context}\n\n"
+            "Conversation:\n"
         )
-        assistant_reply = response.choices[0].message["content"]
+        for msg in ui_messages:
+            conversation += f"{msg['role'].capitalize()}: {msg['content']}\n"
 
-        # Save assistant reply for UI
-        ui_messages.append({"role": "assistant", "content": assistant_reply})
+        # Send to Gemini
+        response = model.generate_content(conversation)
+        assistant_reply = response.text if response else "⚠️ No reply from Gemini."
+
+        # Save reply
+        ui_messages.append({"role": "", "content": assistant_reply})
+
+        return jsonify({"reply": assistant_reply})
+
     except Exception as e:
-        print(f"❌ GPT Error: {e}")
-        ui_messages.append({"role": "assistant", "content": "⚠️ Error: Could not get response from GPT."})
+        print(f"❌ Gemini Error: {e}")
+        error_message = "⚠️ Error: Could not get response from Gemini."
+        ui_messages.append({"role": "assistant", "content": error_message})
+        return jsonify({"reply": error_message}), 500
 
-    return redirect("/")
 
 if __name__ == "__main__":
     app.run(debug=True, port=3000)
